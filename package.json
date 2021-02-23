@@ -1,0 +1,26 @@
+{
+  "name": "node-websocket-base",
+  "productName": "node-websocket-base",
+  "version": "1.0.0",
+  "description": "WebSocket server template for nodejs and electron apps",
+  "main": "ws_server.js",
+  "scripts": {
+    "start":" ./devstart.sh"
+  },
+  "repository": "https://github.com/if-else-return-null/node-websocket-base",
+  "keywords": [
+    "node",
+    "electron",
+    "javascript",
+    "websocket"
+  ],
+  "bin": {
+    "nwb": "ws_server.js"
+  },
+  "author": "ReturnNull",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {
+    "ws": "^7.4.3"
+  }
+}
