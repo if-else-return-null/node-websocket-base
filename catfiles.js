@@ -3,7 +3,7 @@ const fs = require('fs')
 const path = require('path')
 console.log("regenerating ws_server.js");
 
-let WsFiles = ["header.js", "server.js"]
+let WsFiles = ["header.js", "server.js", "handle.js"]
 
 let start = "#!/usr/bin/env node\n"
 
