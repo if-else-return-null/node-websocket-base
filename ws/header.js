@@ -8,9 +8,8 @@ var https = require('https');
 let WS = {}
 WS.args = process.argv
 WS.is_subprocess = true
-WS.user = process.env.USER
-WS.os_platform = process.platform
-WS.app_data_path
+
+WS.config_file = null
 WS.show_help = false
 WS.config = {
     server_port: 25444,
@@ -20,19 +19,30 @@ WS.config = {
     https_key: "/path/to/key.pem",
     remove_cert_key: false, // see start_as_root.sh for more info
     message_json: true,
-    auth_attempt_limit: 5
+    auth_attempt_limit: 5,
+    ban_interval:1800000 // ms ()
 }
 WS.clients = {}
 WS.new_client_id = 0
 WS.banned = { list:[], info:{} }
+
 WS.server = null
 
-WS.saveConfig = function (){
-    fs.writeFileSync(WS.app_data_path + "ws_config.json", JSON.stringify(WS.config,null,4) ) //
+WS.loadComfig = function (){
+    if (fs.existsSync(WS.config_file)) {
+        console.log('WS: Loading config file.');
+        WS.config = JSON.parse( fs.readFileSync(WS.config_file , 'utf8') )
+    }
 }
 
 WS.showHelp = function () {
-    console.log("help requested");
+    console.table(WS.help.cli_options);
+    //console.table(WS.help.config);
+    for (let item in WS.help.config) {
+        console.log(item );
+        console.log(WS.help.config[item]);
+        console.log("\n");
+    }
     process.exit(0)
 }
 
@@ -42,36 +52,15 @@ WS.init = function(){
     // check if run as a sub-process
     if (!process.send) {
         WS.is_subprocess = false
-        // check for config
-        if (WS.os_platform === "win32"){
-            // for windows we will convert to forward slashes like linux
-            WS.app_data_path = process.env.APPDATA.replace(/\\/g, "/")}
-        else {
-            WS.app_data_path = process.env.HOME
-        }
-        // you should update this folder name for your app
-        WS.app_data_path += "/.node-websocket-base/"
 
-        if ( !fs.existsSync( WS.app_data_path ) ) {
-            console.log("WS: Created user data folder", WS.app_data_path);
-            fs.mkdirSync( WS.app_data_path, { } )
-            WS.saveConfig()
-
-        } else {
-            if (fs.existsSync(WS.app_data_path + "ws_config.json")) {
-                console.log('WS: Loading ws_config.json.');
-                WS.config = JSON.parse( fs.readFileSync(WS.app_data_path + "ws_config.json",'utf8') )
-            } else {
-                console.log('WS: Loading ws_config.json.');
-                WS.saveConfig()
-            }
-
-        }
         // check for commandline args then start the server
         WS.args.forEach((item, i) => {
             // show help for command line
             if (item === "--help" ) {
                 WS.show_help = true
+            }
+            if (item === "--config" ) {
+                WS.config_file = WS.args[i+1]
             }
             // custom port
             if (item === "--port" ) {
@@ -85,6 +74,9 @@ WS.init = function(){
                 WS.config.server_https = true
             }
         });
+        if (WS.config_file !== null){
+            WS.loadComfig()
+        }
         if (WS.show_help === true ) {
             WS.showHelp()
         } else {
@@ -111,5 +103,28 @@ WS.init = function(){
 
     }
 
+
+}
+
+WS.help = {
+    config:{
+        server_port: "(Integer) defaults to 25444",
+        server_ip: "(string)  defaults to 0.0.0.0 for network accesable,\n use 127.0.0.1 for localhost only",
+        server_https: "(booleen) defaults to false. if true the server will use https mode",
+        https_cert: "(string) absolute path to https certificate file",
+        https_key: "(string) absolute path to https key file",
+        remove_cert_key:  "(booleen) defaults to false. \n If true the server(in https mode) will delete the certificate and key file after reading them in.\n see start_as_root.sh for more info",
+        message_json: "(booleen) defaults to true which will JSON.parse() each incoming message.\n Set this to false to leave the messages as the are",
+        auth_attempt_limit: "(Integer) defaults to 5,\n number of failed auth attempts before an ip address is added to banned list",
+        ban_interval:"(Integer) defaults to 1800000,\n length of time in milliseconds that an ip address will stay on the banned list"
+    },
+    cli_options:{
+        "--help":"Show this help",
+        "--config":"Specify a config file to use",
+        "--port":"Specify a port to use",
+        "--restrict":"Restrict connections to localhost only",
+        "--https":"Start the server in https mode",
+
+    }
 
 }

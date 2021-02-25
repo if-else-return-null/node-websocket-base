@@ -66,8 +66,10 @@ WS.startServer = function () {
             let timenow = Date.now()
             WS.banned.list.forEach((item, i) => {
                 let id = WS.makeBannedId(item)
-                if (WS.banned.info[id].time + WS.config.ban_interval > timenow) {
+                if (WS.banned.info[id].bantime + WS.config.ban_interval < timenow && WS.banned.info[id].static === false) {
                     // remove from banlist
+                    WS.banned.list.splice(i,1)
+                    delete WS.banned.info[id]
                 }
             });
 
@@ -129,6 +131,7 @@ WS.startServer = function () {
                         if ( WS.banned.info[id].attempts.length > WS.config.auth_attempt_limit ) {
                             console.log( "WS-SECURITY: Client has been banned");
                             WS.banned.list.push(ws.originIP)
+                            WS.banned.info[id].bantime = Date.now()
                             ws.close()
                         }
                     }
