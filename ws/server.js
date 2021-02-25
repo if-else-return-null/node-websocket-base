@@ -91,7 +91,7 @@ WS.startServer = function () {
         ws.isAlive = true;
         ws.connnectTime = Date.now()
         ws.originIP = req.connection.remoteAddress
-        ws.rlBucket = { time:connect_time,count:0 }
+        ws.rlBucket = { time:ws.connnectTime,count:0 }
         ws.isAuthed = false
         // give an id and setup client in WS.clients
         ws.client_id = WS.new_client_id;
@@ -100,8 +100,7 @@ WS.startServer = function () {
 
         ws.on('pong', heartbeat);
         ws.on('error', function error(err) {
-            console.log("ws_client_error", err);
-
+            handle.wsClientError(ws.client_id, err)
         });
 
         ws.on('close', function close() {

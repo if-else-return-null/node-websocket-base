@@ -19,6 +19,9 @@ handle.wsClientClose = function (client_id){
     console.log(`WS: Client disconnected: id ${ client_id } `);
 }
 
+handle.wsClientError = function (client_id, err){
+    console.log(`WS: Client id ${ client_id } error`, err);
+}
 
 handle.clientAuthorize = function (client_id, packet) {
     console.log("WS: Verify client auth");
