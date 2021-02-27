@@ -1,6 +1,6 @@
 # node-websocket-base
 
-WebSocket server template for nodejs and electron apps
+WebSocket server template for nodejs , electron and web apps
 
 
 
@@ -8,6 +8,8 @@ This repository is meant to be a starting point for implementing a websocket ser
 in your own apps. It is designed to be used either as a child process of your app or as standalone server in a terminal.
 
 You can fork the repository, download the zip, or just copy the code you want into your project then edit as needed.
+
+
 
 
 ```

@@ -20,7 +20,9 @@ WS.config = {
     remove_cert_key: false, // see start_as_root.sh for more info
     message_json: true,
     auth_attempt_limit: 5,
-    ban_interval:1800000 // ms ()
+    ban_interval:1800000,
+    max_rate_per_sec: 20,
+    ban_on_rate_limit: true
 }
 WS.clients = {}
 WS.new_client_id = 0

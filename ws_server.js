@@ -21,7 +21,9 @@ WS.config = {
     remove_cert_key: false, // see start_as_root.sh for more info
     message_json: true,
     auth_attempt_limit: 5,
-    ban_interval:1800000 // ms ()
+    ban_interval:1800000,
+    max_rate_per_sec: 20,
+    ban_on_rate_limit: true
 }
 WS.clients = {}
 WS.new_client_id = 0
@@ -197,30 +199,47 @@ WS.startServer = function () {
             let timenow = Date.now()
             WS.banned.list.forEach((item, i) => {
                 let id = WS.makeBannedId(item)
-                if (WS.banned.info[id].time + WS.config.ban_interval > timenow) {
+                if (WS.banned.info[id].bantime + WS.config.ban_interval < timenow && WS.banned.info[id].static === false) {
                     // remove from banlist
+                    WS.banned.list.splice(i,1)
+                    delete WS.banned.info[id]
                 }
             });
 
         }
 
     }, 30000);
+    WS.server.shouldHandle = function(req) {
+        //console.log("shouldHandle CALLED", req.connection.remoteAddress);
 
+        if (WS.banned.list.includes(req.connection.remoteAddress)) {
+            console.log("WS: not handling banned client");
+            return false
+        }
+        if (this.options.path) {
+            const index = req.url.indexOf('?');
+            const pathname = index !== -1 ? req.url.slice(0, index) : req.url;
+
+            if (pathname !== this.options.path) return false;
+        }
+
+        return true;
+}
     // handle websocket server errors
     WS.server.on('error', function error(err) {
         clearInterval(zombieInterval);
-        handle.wssError(err)
+        handle.wsServerError(err)
     });
     // handle websocket server closing
     WS.server.on('close', function close() {
         clearInterval(zombieInterval);
-        handle.wssClose()
+        handle.wsServerClose()
     });
     WS.server.on('connection', function connection(ws, req) {
         ws.isAlive = true;
         ws.connnectTime = Date.now()
         ws.originIP = req.connection.remoteAddress
-        ws.rlBucket = { time:connect_time,count:0 }
+        ws.rlBucket = { time:ws.connnectTime,count:0 } // for future use - rate limiting
         ws.isAuthed = false
         // give an id and setup client in WS.clients
         ws.client_id = WS.new_client_id;
@@ -229,8 +248,7 @@ WS.startServer = function () {
 
         ws.on('pong', heartbeat);
         ws.on('error', function error(err) {
-            console.log("ws_client_error", err);
-
+            handle.wsClientError(ws.client_id, err)
         });
 
         ws.on('close', function close() {
@@ -240,8 +258,34 @@ WS.startServer = function () {
             handle.wsClientClose(ws.client_id)
         })
 
+
         ws.on('message', function incoming(message) {
+            let auth_id
             let packet = message
+            // check for rate limit
+            ws.rlBucket.count += 1
+            if (ws.rlBucket.count > WS.config.max_rate_per_sec) {
+                let timenow = Date.now()
+                let secs = Math.floor( (timenow - ws.rlBucket.time) / 1000 )
+                let avg = Math.floor( ws.rlBucket.count / secs  )
+                console.log("rlout", timenow,secs,avg);
+                if ( avg > WS.config.max_rate_per_sec ) {
+                    // limit exceded
+                    console.log( "WS-SECURITY: Client has exceded rate limit");
+                    if (WS.config.ban_on_rate_limit === true) {
+                        auth_id = WS.makeBannedId(ws.originIP)
+                        if (!WS.banned.info[auth_id]) { WS.banned.info[auth_id] = { bantime:null, attempts:[] , static:false} }
+                        WS.banned.list.push(ws.originIP)
+                        WS.banned.info[auth_id].bantime = Date.now()
+                    }
+                    ws.close()
+                } else {
+                    //empty bucket
+                    ws.rlBucket.time = timenow
+                    ws.rlBucket.count = 0
+                }
+
+            }
             try {
                 if (WS.config.message_json === true){
                     packet = JSON.parse( message )
@@ -250,18 +294,22 @@ WS.startServer = function () {
                 if (ws.isAuthed === true){
                     handle.wsClientMessage(ws.client_id, packet)
                 } else {
-                    let auth_id = WS.makeBannedId(ws.originIP)
+                    // until a new client isAuthed all messages will go to clientAuthorize
+                    auth_id = WS.makeBannedId(ws.originIP)
                     ws.isAuthed = handle.clientAuthorize(ws.client_id, packet)
                     if (ws.isAuthed !== true){
                         // failed auth attempt
-                        if (!WS.banned.info[id]) { WS.banned.info[id] = { bantime:null, attempts:[] , static:false} }
-                        WS.banned.info[id].attempts.push({time:Date.now(), data:packet})
+                        if (!WS.banned.info[auth_id]) { WS.banned.info[auth_id] = { bantime:null, attempts:[] , static:false} }
+                        WS.banned.info[auth_id].attempts.push({time:Date.now(), data:packet})
                         // check if time to ban
-                        if ( WS.banned.info[id].attempts.length > WS.config.auth_attempt_limit ) {
+                        if ( WS.banned.info[auth_id].attempts.length > WS.config.auth_attempt_limit ) {
                             console.log( "WS-SECURITY: Client has been banned");
                             WS.banned.list.push(ws.originIP)
+                            WS.banned.info[auth_id].bantime = Date.now()
                             ws.close()
                         }
+                    } else {
+                        console.log("WS client auth good");
                     }
 
                 }
@@ -288,7 +336,10 @@ WS.startServer = function () {
 
 WS.stopServer = function () {
     console.log("'WS: server is stopping", WS.config);
-    setTimeout(function(){process.exit();},1000)
+    setTimeout(function(){
+        WS.server.close()
+        //process.exit();
+    },1000)
 }
 
 WS.sendToClient = function (id, packet) {
@@ -309,11 +360,11 @@ WS.sendToAllClients = function (packet, checkAuth = true) {
 let handle = {}
 
 
-handle.wssError = function (err){
+handle.wsServerError = function (err){
     console.log("WS: Server error has occured",err);
 }
 
-handle.wssClose = function (){
+handle.wsServerClose = function (){
     console.log("WS: server has closed");
 }
 
@@ -325,17 +376,34 @@ handle.wsClientClose = function (client_id){
     console.log(`WS: Client disconnected: id ${ client_id } `);
 }
 
+handle.wsClientError = function (client_id, err){
+    console.log(`WS: Client id ${ client_id } error`, err);
+}
 
 handle.clientAuthorize = function (client_id, packet) {
     console.log("WS: Verify client auth");
     // verify auth acording to your own logic
     // this function must return a booleen and should probobly be syncronous
+    // simple example
+    let key = "someSecretKey"
+    if (packet.key && packet.key === key) {
+        return true
+    } else {
+        return false
+    }
 
     // to bypass auth just return true
-    return true
+    //return true
 }
 
 
 
 // call this when your code is ready for the server to start up
 WS.init()
+
+
+// below here just for testing
+setTimeout(function(){
+    //WS.stopServer()
+    //process.exit();
+},10000)
