@@ -106,7 +106,7 @@ WS.startServer = function () {
         ws.isAlive = true;
         ws.connnectTime = Date.now()
         ws.originIP = req.connection.remoteAddress
-        ws.rlBucket = { time:ws.connnectTime,count:0 } 
+        ws.rlBucket = { time:ws.connnectTime,count:0 }
         ws.isAuthed = false
         // give an id and setup client in WS.clients
         ws.client_id = WS.new_client_id;
@@ -194,7 +194,7 @@ WS.startServer = function () {
 
 
 
-    // when the server is ready for clients
+    // the server is ready for clients
     if (WS.is_subprocess){
         process.send({type:"websocket_ready"})
     }
