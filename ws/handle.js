@@ -1,14 +1,21 @@
 
-// all the functions in handle are intended to modified for your specific use case
+// from this point you would define the all the logic, functions, data, etc that is
+// need for your server to do its job. Whatever that might be.
+// all the functions in the handle object are intended to modified for your specific use case
+// Then call WS.init() when your code is ready for the server to start up
+
+
 let handle = {}
 
 
 handle.wsServerError = function (err){
     console.log("WS: Server error has occured",err);
+    process.exit()
 }
 
 handle.wsServerClose = function (){
     console.log("WS: server has closed");
+    process.exit()
 }
 
 handle.wsClientMessage = function (client_id, packet){
@@ -40,8 +47,24 @@ handle.clientAuthorize = function (client_id, packet) {
 }
 
 
+// setup any other messaging here
+handle.parentMessage = function (msg){
+    console.log('WS: Message from parent', msg);
+    if (msg.type === "config_info") {
+        // update any config info supplied by parent before starting server
+        for (let item in msg.config ){
+            WS.config[item] = msg.config[item]
+        }
+        WS.startServer()
+    }
+    if (msg.type === "shutdown_server") {
+        WS.stopServer()
+    }
+}
 
-// call this when your code is ready for the server to start up
+
+
+
 WS.init()
 
 

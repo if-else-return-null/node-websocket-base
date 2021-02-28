@@ -43,4 +43,6 @@ chmod 0770 $tempkey
 
 # start the server as lesser user
 su $otheruser -c ./devstart.sh
+
+# you may need to update the path when switching user from root
 #su $otheruser -c "export PATH=/usr/local/lib/node/stable/bin/:$PATH; ./devstart.sh"

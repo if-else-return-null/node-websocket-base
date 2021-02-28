@@ -91,15 +91,8 @@ WS.init = function(){
     } else {
         // if run as a subprocess setup messaging and request config
         process.on('message', (msg) => {
-            console.log('WS: Message from parent', msg);
-            if (msg.type === "config_info") {
-                WS.config = msg.config
-                WS.app_data_path = msg.app_data_path
-                WS.startServer()
-            }
-            if (msg.type === "shutdown_server") {
-                WS.stopServer()
-            }
+            handle.parentMessage(msg)
+            
         });
         // request the config from parent before starting ws server
         process.send({type:"request_config"})
@@ -364,10 +357,12 @@ let handle = {}
 
 handle.wsServerError = function (err){
     console.log("WS: Server error has occured",err);
+    process.exit()
 }
 
 handle.wsServerClose = function (){
     console.log("WS: server has closed");
+    process.exit()
 }
 
 handle.wsClientMessage = function (client_id, packet){
@@ -397,6 +392,24 @@ handle.clientAuthorize = function (client_id, packet) {
     // to bypass auth just return true
     //return true
 }
+
+
+handle.parentMessage = function (msg){
+    console.log('WS: Message from parent', msg);
+    if (msg.type === "config_info") {
+        //WS.config = msg.config
+        for (let item in msg.config ){
+            WS.config[item] = msg.config[item]
+        }
+
+        WS.startServer()
+    }
+    if (msg.type === "shutdown_server") {
+        WS.stopServer()
+    }
+}
+
+
 
 
 

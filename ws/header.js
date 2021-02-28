@@ -90,15 +90,8 @@ WS.init = function(){
     } else {
         // if run as a subprocess setup messaging and request config
         process.on('message', (msg) => {
-            console.log('WS: Message from parent', msg);
-            if (msg.type === "config_info") {
-                WS.config = msg.config
-                WS.app_data_path = msg.app_data_path
-                WS.startServer()
-            }
-            if (msg.type === "shutdown_server") {
-                WS.stopServer()
-            }
+            handle.parentMessage(msg)
+            
         });
         // request the config from parent before starting ws server
         process.send({type:"request_config"})
