@@ -8,7 +8,7 @@ var https = require('https');
 let WS = {}
 WS.args = process.argv
 WS.is_subprocess = true
-
+if (!process.send) { WS.is_subprocess = false }
 WS.config_file = null
 WS.show_help = false
 WS.config = {
@@ -33,7 +33,11 @@ WS.server = null
 WS.loadComfig = function (){
     if (fs.existsSync(WS.config_file)) {
         console.log('WS: Loading config file.');
-        WS.config = JSON.parse( fs.readFileSync(WS.config_file , 'utf8') )
+        let temp = JSON.parse( fs.readFileSync(WS.config_file , 'utf8') )
+        //WS.config = JSON.parse( fs.readFileSync(WS.config_file , 'utf8') )
+        for (let item in temp ){
+            WS.config[item] = temp[item]
+        }
     }
 }
 
@@ -52,8 +56,7 @@ WS.showHelp = function () {
 
 WS.init = function(){
     // check if run as a sub-process
-    if (!process.send) {
-        WS.is_subprocess = false
+    if (WS.is_subprocess === false) {
 
         // check for commandline args then start the server
         WS.args.forEach((item, i) => {
@@ -91,7 +94,7 @@ WS.init = function(){
         // if run as a subprocess setup messaging and request config
         process.on('message', (msg) => {
             handle.parentMessage(msg)
-            
+
         });
         // request the config from parent before starting ws server
         process.send({type:"request_config"})
