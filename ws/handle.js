@@ -18,6 +18,16 @@ handle.wsServerClose = function (){
     process.exit()
 }
 
+handle.wsServerIsReady = function () {
+    // do any other tasks for server startup
+    if (WS.is_subprocess){
+        process.send({type:"websocket_ready"})
+    } else {
+        console.log("WS: Websocket Ready")
+    }
+}
+
+
 handle.wsClientMessage = function (client_id, packet){
     console.log(`WS: Message from client_id ${ client_id }`, packet );
 }
