@@ -190,6 +190,7 @@ WS.startServer = function () {
             }
 
         })
+        handle.wsNewClientConnect(ws.client_id)
     })
 
 

@@ -27,6 +27,9 @@ handle.wsServerIsReady = function () {
     }
 }
 
+handle.wsNewClientConnect = function(client_id) {
+    console.log(`WS: New client connected: id ${ client_id } `);
+}
 
 handle.wsClientMessage = function (client_id, packet){
     console.log(`WS: Message from client_id ${ client_id }`, packet );
