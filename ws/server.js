@@ -109,8 +109,8 @@ WS.startServer = function () {
         ws.rlBucket = { time:ws.connnectTime,count:0 }
         ws.isAuthed = false
         // give an id and setup client in WS.clients
-        ws.client_id = WS.new_client_id;
-        WS.clients[WS.new_client_id] = { ws_ref: ws , id : WS.new_client_id  }
+        ws.client_id = String(WS.new_client_id);
+        WS.clients[ws.client_id] = { ws_ref: ws , id : ws.client_id  }
         WS.new_client_id += 1;
 
         ws.on('pong', heartbeat);
